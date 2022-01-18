@@ -176,3 +176,59 @@ It loops through all the cloned repositories and runs the following actions:
     ```
 
 * If a diff file is copied, applies the diff file to the cloned repository on the Remote Server.
+
+## Docker Login Patch - Rate Limit Workaround
+
+Submariner pulls a couple of images from Docker.
+If on a corporate network where there are multiple "anonymous" Docker pull requests,
+the Docker Rate Limit can be hit:
+```
+docker: Error response from daemon: toomanyrequests: You have reached your pull rate limit.
+  You may increase the limit by authenticating and upgrading: https://www.docker.com/increase-rate-limit.
+```
+
+Several fixes have been added, like copying Weave images to local registry so they aren't
+pulled every `make deploy` (`make deploy` can be replaced with `make cluster` in this description).
+But there are still instance where it may get hit.
+Logging into Docker on host machine doesn't work because `make deploy` runs in a Dapper shell
+and loses the login.
+
+The following patch exposes Docker login credential through environment variables to the Dapper shell.
+It is not recommended to have your Docker login credential exposed via environment variables,
+which is why this patch is not pushed upstream.
+But when you are blocked, this is a ugly hack that unblocks you.
+Once the variables are used in the Dapper shell, they are `unset`.
+However, they are still exposed on the host `make deploy` was run on.
+
+**NOTE:** This logs into Docker in the Dapper shell so Docker pulls from within Dapper shell
+will not be from "anonymous".
+If Docker pull is from within the KIND cluster, this will not help.
+To work around the pull rate errors within KIND cluster, you need to pre-download the image
+from within the Dapper shell and copy to local registry.
+See `deploy_weave_cni()` or `deploy_kind_ovn()` in
+[`cluster.sh`](https://github.com/submariner-io/shipyard/blob/devel/scripts/shared/clusters.sh).
+
+Steps to apply patch:
+
+* Expose Docker login credential via environment variables (export or setup in \~/.bashrc):
+  ```bash
+  DOCKER_USER=Username
+  DOCKER_PASSWD=password
+  ```
+
+* Apply patch to `shipyard` repository and build image:
+  ```bash
+  cp /home/${SUBMARINER_USER}/src/submariner-workflow/docker_login.diff /home/${SUBMARINER_USER}/src/submariner-io/shipyard/.
+
+  cd /home/${SUBMARINER_USER}/src/submariner-io/shipyard/
+  git apply docker_login.diff
+  make images
+  ```
+
+* The patch updates `Dockerfile.dapper`. If running `make deploy` out of another repository
+  like `submariner-operator`, update `Dockerfile.dapper` in that repository.
+  ```bash
+  cd /home/${SUBMARINER_USER}/src/submariner-io/submariner-operator/
+  cp ../shipyard/Dockerfile.dapper .
+  make deploy using=lighthouse
+  ```
