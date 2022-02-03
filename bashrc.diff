@@ -1,0 +1,31 @@
+34a35,64
+> export SUB_CLUSTER_PREFIX="cluster"
+> export DOCKER_LOGIN=username
+> export DOCKER_PASSWD=passwd
+> 
+> alias cdsub='cd /home/$USER/src/submariner-io/submariner-operator/; export KUBECONFIG=$(find $(git rev-parse --show-toplevel)/output/kubeconfigs/ -type f -printf %p:)'
+> alias subprep='export KUBECONFIG=$(find /home/$USER/src/submariner-io/submariner-operator/output/kubeconfigs/ -type f -printf %p:)'
+> 
+> cx() {
+>   if [[ ! -z $1 ]] ; then
+>     if [[ $1 == "?" ]] ; then
+>       kubectl config get-contexts
+>     elif [[ $1 == 0 ]] ; then
+>       PS1='[\u@\h \W]\$ '
+>     elif [[ $1 =~ ^[0-9]+$ ]] ; then
+>       if kubectl config use-context "${SUB_CLUSTER_PREFIX}""${1}"; then
+>         PS1='[\u@\h \W c'"${1}"']\$ '
+>       fi
+>     else
+>       if kubectl config use-context "${1}"; then
+>         PS1='[\u@\h \W '"${1}"']\$ '
+>       fi
+>     fi
+>   fi
+> }
+> 
+> alias c0='cx 0'
+> alias c1='cx 1'
+> alias c2='cx 2'
+> alias c3='cx 3'
+> alias c4='cx 4'

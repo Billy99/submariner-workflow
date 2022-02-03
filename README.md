@@ -212,7 +212,7 @@ Steps to apply patch:
 
 * Expose Docker login credential via environment variables (export or setup in \~/.bashrc):
   ```bash
-  DOCKER_USER=Username
+  DOCKER_USER=username
   DOCKER_PASSWD=password
   ```
 
@@ -232,3 +232,63 @@ Steps to apply patch:
   cp ../shipyard/Dockerfile.dapper .
   make deploy using=lighthouse
   ```
+
+## Aliases
+
+I found a couple of aliases useful that I added to my `~/.bashrc` file.
+I added the changes to this repo as `bashrc.diff`.
+
+Summary:
+* `subprep`: After I start a set of clusters that are using submariner, I run this alias.
+  It sets the `KUBECONFIG` properly.
+  ```bash
+  $ make deploy using=lighthouse
+  :
+  $ subprep
+  $ echo $KUBECONFIG
+  /home/bmcfall/src/submariner-io/submariner-operator/output/kubeconfigs/kind-config-cluster4:/home/bmcfall/src/submariner-io/submariner-operator/output/kubeconfigs/kind-config-cluster2:/home/bmcfall/src/submariner-io/submariner-operator/output/kubeconfigs/kind-config-cluster1:/home/bmcfall/src/submariner-io/submariner-operator/output/kubeconfigs/kind-config-cluster3:
+  ```
+* `cdsub`: This just changes directory to `submariner-operator` based on the base directory
+  used above in the other scripts. It also runs `subprep` above.
+  ```bash
+  $ cdsub
+  $ pwd
+  /home/bmcfall/src/submariner-io/submariner-operator
+  $ echo $KUBECONFIG
+  /home/bmcfall/src/submariner-io/submariner-operator/output/kubeconfigs/kind-config-cluster4:/home/bmcfall/src/submariner-io/submariner-operator/output/kubeconfigs/kind-config-cluster2:/home/bmcfall/src/submariner-io/submariner-operator/output/kubeconfigs/kind-config-cluster1:/home/bmcfall/src/submariner-io/submariner-operator/output/kubeconfigs/kind-config-cluster3:
+  ```
+* `c0` `c1` `c2` `c3` `c4`: These aliases set the kubectl context for the desired cluster (cluster1,
+  cluster2, ...) and updates the prompt to indicated the current cluster in use.
+  `c0` clears the prompt.
+  This alias is DEPRECATED in favor of `cx` below, but still have it because I keep forgetting.
+  ```bash
+  [bmcfall@submariner-host-02 submariner-operator]$ c1
+  Switched to context "cluster1".
+  [bmcfall@submariner-host-02 submariner-operator c1]$ c0
+  [bmcfall@submariner-host-02 submariner-operator]$
+  ```
+* `cx`: As I started adding more than the default number of clusters to my deployment,
+  I found my `c1` type alias was not scalable. So `cx` is a function that takes one parameter,
+  and the `c0` - `c4` now just call this function.
+  This will allow a much larger set of clusters.
+  This assumes the default cluster naming convention in submariner KIND of `clusterx` where
+  `x` is some number.
+  The cluster name prefix can be overwritten using `SUB_CLUSTER_PREFIX`.
+  The full cluster name can also be entered if using another script.
+  Also looks for `?`, which returns the list of clusters created.
+  ```bash
+  $ cx 5
+  Switched to context "cluster5".
+  $ cx ?
+  CURRENT   NAME       CLUSTER    AUTHINFO   NAMESPACE
+            cluster1   cluster1   cluster1   
+            cluster2   cluster2   cluster2   
+            cluster3   cluster3   cluster3   
+            cluster4   cluster4   cluster4   
+  *         cluster5   cluster5   cluster5   
+            cluster6   cluster6   cluster6   
+  $ cx cluster2
+  Switched to context "cluster2".
+  ```
+  **NOTE:** The context can be changed in other windows or by other commands,
+  so the prompt is just a suggestion and may not always be correct.
