@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Source the variables in variables.sh
+. variables.sh
+
 SUBMARINER_REPOS=( $( ls . ) )
 
 for REPO in "${SUBMARINER_REPOS[@]}"
@@ -31,6 +34,12 @@ do
       if [ $? != 0 ]; then
         echo "  *** Failed for repo \"${REPO}\". ***"
       fi
+
+      # Since nothing has changed in this repo, delete images associated
+      # with repo in case there are local changes.
+      echo "Removing all images for \"${REPO}\" ..."
+      remove_repo_images "${REPO}"
+
     else
       echo "  *** Project \"${REPO}\" has local changes, manual updating required! ***"
     fi

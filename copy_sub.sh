@@ -3,16 +3,23 @@
 # Source the variables in variables.sh
 . variables.sh
 
+
 SUBMARINER_REPOS=( $( ls . ) )
 for REPO in "${SUBMARINER_REPOS[@]}"
 do
   if [[ -d ${REPO} ]] ; then
+    DIFF_FILE_EXISTED=false
+
     echo "Evaluating \"${REPO}\":"
     pushd ${REPO} &>/dev/null
 
-    echo "Remove existing diff file:"
-    echo "  rm -f ${SUBMARINER_DIFF_FILENAME}"
-    rm -f "${SUBMARINER_DIFF_FILENAME}"
+    if [[ -f "$SUBMARINER_DIFF_FILENAME" ]]; then
+      echo "Remove existing diff file:"
+      echo "  rm -f ${SUBMARINER_DIFF_FILENAME}"
+      rm -f "${SUBMARINER_DIFF_FILENAME}"
+
+      DIFF_FILE_EXISTED=true
+    fi
 
     echo "Remove any exiting changes:"
     echo "  git checkout ."
@@ -41,7 +48,12 @@ do
       git apply ${SUBMARINER_DIFF_FILENAME}
       rm -f ${SUBMARINER_DIFF_FILENAME}
     else
-      echo "No diff file found."
+      if [[ "$DIFF_FILE_EXISTED" == "true" ]]; then
+        echo "Previously existing diff file found, but none now. Delete images ..."
+        remove_repo_images ${REPO}
+      else
+        echo "No diff file found."
+      fi
     fi
 
     popd &>/dev/null

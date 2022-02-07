@@ -1,6 +1,21 @@
 # submariner-workflow
 Set of scripts used to work with multiple Submariner Repositories
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Multiple Repository Management (local)](#multiple-repository-management-local)
+   - [setup_sub.sh](#setup_subsh)
+   - [update_sub.sh](#update_subsh)
+   - [variables.sh](#variablessh)
+- [Remote Testing (remote)](#remote-testing-remote)
+   - [gen_diff_sub.sh](#gen_diff_subsh)
+   - [copy_sub.sh](#copy_subsh)
+- [Docker Login Patch - Rate Limit Workaround](#docker-login-patch---rate-limit-workaround)
+   - [install_docker_login.sh](#install_docker_loginsh)
+- [Aliases](#aliases)
+
+
 ## Overview
 
 [Submariner](https://github.com/submariner-io) is implemented as a set of repositories.
@@ -79,9 +94,12 @@ The `setup_sub.sh` script performs three actions:
 The `update_sub.sh` script loops through the set of existing cloned repositories and
 pulls the latest from upstream using `git fetch` and `git rebase`.
 The script will detect whether to pull from `origin\devel`, `upstream\devel`, or other.
-If the cloned repositories has any changes, then that cloned repository is skipped
+
+**NOTE:** If the cloned repositories has any changes, then that cloned repository is skipped
 and manual update required.
 Handling merge conflicts was not worth the effort.
+
+**NOTE:** If no changes are detected, this script also removes any images associated with the repo.
 
 ### variables.sh
 
@@ -193,7 +211,9 @@ But there are still instance where it may get hit.
 Logging into Docker on host machine doesn't work because `make deploy` runs in a Dapper shell
 and loses the login.
 
-The following patch exposes Docker login credential through environment variables to the Dapper shell.
+The following patch exposes Docker login credential through environment variables to the Dapper shell,
+then logs into Docker when building images (from `build_image.sh`) or when deploying clusters
+(from `cluster.sh`).
 It is not recommended to have your Docker login credential exposed via environment variables,
 which is why this patch is not pushed upstream.
 But when you are blocked, this is a ugly hack that unblocks you.
@@ -216,7 +236,8 @@ Steps to apply patch:
   DOCKER_PASSWD=password
   ```
 
-* Apply patch to `shipyard` repository and build image:
+* Apply patch to `shipyard` repository and build image (`install_docker_login.sh`, see below,
+  does most of these steps, just laid out here so it's clear what is happening under the hood):
   ```bash
   cp /home/${SUBMARINER_USER}/src/submariner-workflow/docker_login.diff /home/${SUBMARINER_USER}/src/submariner-io/shipyard/.
 
@@ -225,13 +246,38 @@ Steps to apply patch:
   make images
   ```
 
-* The patch updates `Dockerfile.dapper`. If running `make deploy` out of another repository
-  like `submariner-operator`, update `Dockerfile.dapper` in that repository.
+* The patch updates `Dockerfile.dapper`. If running `make images` or `make deploy` out of another
+  repository like `submariner-operator`, update `Dockerfile.dapper` in that repository.
   ```bash
+  cd /home/${SUBMARINER_USER}/src/submariner-io/lighthouse/
+  cp ../shipyard/Dockerfile.dapper .
+  make images
+
   cd /home/${SUBMARINER_USER}/src/submariner-io/submariner-operator/
   cp ../shipyard/Dockerfile.dapper .
   make deploy using=lighthouse
   ```
+
+### install_docker_login.sh
+
+This script, `install_docker_login.sh`, performs the above steps.
+It copies the `docker_login.diff` file to `shipyard` and applies the diff
+(it does not run `make images`).
+The script also copies `Dockerfile.dapper` to all the local repos.
+```bash
+mkdir -p /home/${USER}/src/; cd /home/${USER}/src/
+git clone https://github.com/Billy99/submariner-workflow.git
+cd  /home/${USER}/src/submariner-workflow/
+
+./install_docker_login.sh 
+  Copying "docker_login.diff" to "shipyard/" and applying ...
+  Copying "Dockerfile.dapper" to "admiral"
+  Copying "Dockerfile.dapper" to "coastguard"
+  Copying "Dockerfile.dapper" to "lighthouse"
+  Copying "Dockerfile.dapper" to "submariner"
+  Copying "Dockerfile.dapper" to "submariner-operator"
+  Copying "Dockerfile.dapper" to "submariner-website"
+```
 
 ## Aliases
 
