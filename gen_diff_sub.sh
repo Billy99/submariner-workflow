@@ -18,6 +18,9 @@ do
     if [ "$HEADHASH" != "$UPSTREAMHASH" ] ; then
         echo "Changes detect, regenerate diff file: ${SUBMARINER_DIFF_FILENAME}"
         git diff HEAD^ > "${SUBMARINER_DIFF_FILENAME}"
+    elif [[ `git status --porcelain` ]]; then
+        echo "Changes detect, regenerate diff file: ${SUBMARINER_DIFF_FILENAME}"
+        git diff > "${SUBMARINER_DIFF_FILENAME}"
     fi
 
     popd &>/dev/null

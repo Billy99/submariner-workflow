@@ -30,6 +30,7 @@ fi
 mkdir -p ${SUBMARINER_BASE_DIRECTORY}
 
 echo "Deployment mode: $SUBMARINER_DEPLOY"
+echo "Copying scripts ..."
 if [[ "${SUBMARINER_DEPLOY}" == "local"  ]] ; then
   cp gen_diff_sub.sh ${SUBMARINER_BASE_DIRECTORY}/.
   cp update_sub.sh ${SUBMARINER_BASE_DIRECTORY}/.

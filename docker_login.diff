@@ -11,13 +11,53 @@ index d2e8c93..69d6980 100644
      DAPPER_SOURCE=/go/src/github.com/submariner-io/${PROJECT} DAPPER_DOCKER_SOCKET=true
  ENV DAPPER_OUTPUT=${DAPPER_SOURCE}/output
  
+diff --git a/scripts/shared/build_image.sh b/scripts/shared/build_image.sh
+index 4708b9b..94f6fa5 100755
+--- a/scripts/shared/build_image.sh
++++ b/scripts/shared/build_image.sh
+@@ -34,6 +34,15 @@ set -e
+ local_image=${repo}/${image}:${tag}
+ cache_image=${repo}/${image}:${CUTTING_EDGE}
+ 
++if [[ -n "${DOCKER_USER}" ]] ; then
++    DOCKER_PASSWD_FILE=".docker_file"
++    echo "${DOCKER_PASSWD}" > "${DOCKER_PASSWD_FILE}"
++    docker_login ${DOCKER_USER} ${DOCKER_PASSWD_FILE}
++    rm -f "${DOCKER_PASSWD_FILE}"
++    unset DOCKER_PASSWD
++    unset DOCKER_PASSWD_FILE
++fi
++
+ # When using cache pull latest image from the repo, so that it's layers may be reused.
+ cache_flag=''
+ if [[ "$cache" = true ]]; then
 diff --git a/scripts/shared/clusters.sh b/scripts/shared/clusters.sh
-index 28547e9..4995922 100755
+index 9add415..34cfd79 100755
 --- a/scripts/shared/clusters.sh
 +++ b/scripts/shared/clusters.sh
-@@ -44,6 +44,27 @@ set -em
+@@ -44,6 +44,15 @@ set -em
  source ${SCRIPTS_DIR}/lib/debug_functions
  source ${SCRIPTS_DIR}/lib/utils
+ 
++if [[ -n "${DOCKER_USER}" ]] ; then
++    DOCKER_PASSWD_FILE=".docker_file"
++    echo "${DOCKER_PASSWD}" > "${DOCKER_PASSWD_FILE}"
++    docker_login ${DOCKER_USER} ${DOCKER_PASSWD_FILE}
++    rm -f "${DOCKER_PASSWD_FILE}"
++    unset DOCKER_PASSWD
++    unset DOCKER_PASSWD_FILE
++fi
++
+ ### Functions ###
+ 
+ function generate_cluster_yaml() {
+diff --git a/scripts/shared/lib/debug_functions b/scripts/shared/lib/debug_functions
+index e591afc..530a177 100644
+--- a/scripts/shared/lib/debug_functions
++++ b/scripts/shared/lib/debug_functions
+@@ -7,6 +7,20 @@ NO_COLOR=$(echo -e '\e[0m')
+ 
+ ### Functions ###
  
 +function docker_login() {
 +    login="$1"
@@ -33,13 +73,6 @@ index 28547e9..4995922 100755
 +    fi
 +}
 +
-+DOCKER_PASSWD_FILE="${DAPPER_OUTPUT}/.docker_file"
-+echo "${DOCKER_PASSWD}" > "${DOCKER_PASSWD_FILE}"
-+docker_login ${DOCKER_USER} ${DOCKER_PASSWD_FILE}
-+rm -f "${DOCKER_PASSWD_FILE}"
-+unset DOCKER_PASSWD
-+unset DOCKER_PASSWD_FILE
-+
- ### Functions ###
- 
- function generate_cluster_yaml() {
+ function trap_commands() {
+     # Function to print each bash command before it is executed
+     trap 'cmd="$BASH_COMMAND" &&
