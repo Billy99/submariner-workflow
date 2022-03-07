@@ -11,8 +11,6 @@ Set of scripts used to work with multiple Submariner Repositories
 - [Remote Testing (remote)](#remote-testing-remote)
    - [gen_diff_sub.sh](#gen_diff_subsh)
    - [copy_sub.sh](#copy_subsh)
-- [Docker Login Patch - Rate Limit Workaround](#docker-login-patch---rate-limit-workaround)
-   - [install_docker_login.sh](#install_docker_loginsh)
 - [Aliases](#aliases)
 
 
@@ -194,90 +192,6 @@ It loops through all the cloned repositories and runs the following actions:
     ```
 
 * If a diff file is copied, applies the diff file to the cloned repository on the Remote Server.
-
-## Docker Login Patch - Rate Limit Workaround
-
-Submariner pulls a couple of images from Docker.
-If on a corporate network where there are multiple "anonymous" Docker pull requests,
-the Docker Rate Limit can be hit:
-```
-docker: Error response from daemon: toomanyrequests: You have reached your pull rate limit.
-  You may increase the limit by authenticating and upgrading: https://www.docker.com/increase-rate-limit.
-```
-
-Several fixes have been added, like copying Weave images to local registry so they aren't
-pulled every `make deploy` (`make deploy` can be replaced with `make cluster` in this description).
-But there are still instance where it may get hit.
-Logging into Docker on host machine doesn't work because `make deploy` runs in a Dapper shell
-and loses the login.
-
-The following patch exposes Docker login credential through environment variables to the Dapper shell,
-then logs into Docker when building images (from `build_image.sh`) or when deploying clusters
-(from `cluster.sh`).
-It is not recommended to have your Docker login credential exposed via environment variables,
-which is why this patch is not pushed upstream.
-But when you are blocked, this is a ugly hack that unblocks you.
-Once the variables are used in the Dapper shell, they are `unset`.
-However, they are still exposed on the host `make deploy` was run on.
-
-**NOTE:** This logs into Docker in the Dapper shell so Docker pulls from within Dapper shell
-will not be from "anonymous".
-If Docker pull is from within the KIND cluster, this will not help.
-To work around the pull rate errors within KIND cluster, you need to pre-download the image
-from within the Dapper shell and copy to local registry.
-See `deploy_weave_cni()` or `deploy_kind_ovn()` in
-[`cluster.sh`](https://github.com/submariner-io/shipyard/blob/devel/scripts/shared/clusters.sh).
-
-Steps to apply patch:
-
-* Expose Docker login credential via environment variables (export or setup in \~/.bashrc):
-  ```bash
-  DOCKER_USER=username
-  DOCKER_PASSWD=password
-  ```
-
-* Apply patch to `shipyard` repository and build image (`install_docker_login.sh`, see below,
-  does most of these steps, just laid out here so it's clear what is happening under the hood):
-  ```bash
-  cp /home/${SUBMARINER_USER}/src/submariner-workflow/docker_login.diff /home/${SUBMARINER_USER}/src/submariner-io/shipyard/.
-
-  cd /home/${SUBMARINER_USER}/src/submariner-io/shipyard/
-  git apply docker_login.diff
-  make images
-  ```
-
-* The patch updates `Dockerfile.dapper`. If running `make images` or `make deploy` out of another
-  repository like `submariner-operator`, update `Dockerfile.dapper` in that repository.
-  ```bash
-  cd /home/${SUBMARINER_USER}/src/submariner-io/lighthouse/
-  cp ../shipyard/Dockerfile.dapper .
-  make images
-
-  cd /home/${SUBMARINER_USER}/src/submariner-io/submariner-operator/
-  cp ../shipyard/Dockerfile.dapper .
-  make deploy using=lighthouse
-  ```
-
-### install_docker_login.sh
-
-This script, `install_docker_login.sh`, performs the above steps.
-It copies the `docker_login.diff` file to `shipyard` and applies the diff
-(it does not run `make images`).
-The script also copies `Dockerfile.dapper` to all the local repos.
-```bash
-mkdir -p /home/${USER}/src/; cd /home/${USER}/src/
-git clone https://github.com/Billy99/submariner-workflow.git
-cd  /home/${USER}/src/submariner-workflow/
-
-./install_docker_login.sh 
-  Copying "docker_login.diff" to "shipyard/" and applying ...
-  Copying "Dockerfile.dapper" to "admiral"
-  Copying "Dockerfile.dapper" to "coastguard"
-  Copying "Dockerfile.dapper" to "lighthouse"
-  Copying "Dockerfile.dapper" to "submariner"
-  Copying "Dockerfile.dapper" to "submariner-operator"
-  Copying "Dockerfile.dapper" to "submariner-website"
-```
 
 ## Aliases
 

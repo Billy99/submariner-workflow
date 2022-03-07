@@ -46,7 +46,6 @@ do
     if [[ $? == 0 ]] ; then
       echo "Found diff file, applying ..."
       git apply ${SUBMARINER_DIFF_FILENAME}
-      rm -f ${SUBMARINER_DIFF_FILENAME}
     else
       if [[ "$DIFF_FILE_EXISTED" == "true" ]]; then
         echo "Previously existing diff file found, but none now. Delete images ..."
