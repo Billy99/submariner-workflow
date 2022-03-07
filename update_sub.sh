@@ -13,7 +13,7 @@ do
 
     HEADHASH=$(git rev-parse HEAD)
     UPSTREAMHASH=$(git rev-parse devel@{upstream})
-    if [ "${HEADHASH}" == "${UPSTREAMHASH}" ] ; then
+    if [[ "${HEADHASH}" == "${UPSTREAMHASH}" ]] && [[ -z `git status --porcelain` ]] ; then
       echo "No local changes detected, updating ..."
 
       # UPSTREAM will be set to something like origin/devel or upstream/devel
@@ -33,6 +33,16 @@ do
       git rebase ${UPSTREAM}
       if [ $? != 0 ]; then
         echo "  *** Failed for repo \"${REPO}\". ***"
+      fi
+
+      echo "Running:"
+      echo "  git remote prune ${REPOSITORY}"
+      if [ "${REPOSITORY}" != "origin" ]; then
+        echo "  git remote prune origin"
+      fi
+      git remote prune ${REPOSITORY}
+      if [ "${REPOSITORY}" != "origin" ]; then
+        git remote prune origin
       fi
 
       # Since nothing has changed in this repo, delete images associated
